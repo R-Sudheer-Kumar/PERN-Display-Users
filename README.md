@@ -73,5 +73,5 @@ Contributions are welcome! Please follow the [Contributing Guidelines](CONTRIBUT
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
-```
+
 Feel free to copy and paste this content into your README.md file, and customize it as needed for your specific project.
