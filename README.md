@@ -60,7 +60,7 @@ cd server
 npm start
 ```
 
-The back-end server will run at [http://localhost:5000](http://localhost:5000).
+The back-end server will run at [http://localhost:5000](http://localhost:3500).
 
 ## Usage
 
