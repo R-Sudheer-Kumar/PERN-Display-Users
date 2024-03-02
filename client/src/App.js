@@ -2,7 +2,7 @@ import './App.css';
 import { useEffect, useState } from 'react';
 import { FaArrowUp } from "react-icons/fa";
 import { FaArrowDown } from "react-icons/fa";
-
+import { RiArrowUpDownFill } from "react-icons/ri";
 
 
 function App() {
@@ -10,10 +10,10 @@ function App() {
   const [search, setSearch] = useState('');
   const [datas, setDatas] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [originalData , setOriginalData] = useState(null);
+  const [originalData, setOriginalData] = useState(null);
 
   const [sortKey, setSortKey] = useState([{
-    key: null,
+    key: 'sno',
     order: 'asc',
   }]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -37,21 +37,10 @@ function App() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    handleSort(sortKey);
+  }, [sortKey]);
 
-  function convertAndSplitDateTime(datetimeString) {
-    const dateObject = new Date(datetimeString);
-    const year = dateObject.getFullYear();
-    const month = (dateObject.getMonth()).toString().padStart(2, '0');
-    const date = dateObject.getDate().toString().padStart(2, '0');
-    const hours = dateObject.getHours().toString().padStart(2, '0');
-    const minutes = dateObject.getMinutes().toString().padStart(2, '0');
-    const seconds = dateObject.getSeconds().toString().padStart(2, '0');
-
-    const formattedDate = `${date}/${month}/${year}`;
-    const formattedTime = `${hours}:${minutes}:${seconds}`;
-
-    return [formattedDate, formattedTime];
-  }
 
   const handleClick = (colname) => {
     if (sortKey.order === 'asc') {
@@ -60,24 +49,15 @@ function App() {
     else {
       setSortKey({ key: colname, order: 'asc' });
     }
+    setCurrentPage(1);
   }
 
-  const sorted = (data) => {
-    const sodata = data.sort((a, b) => {
-      const timeA = new Date(a['created_at']);
-      const timeB = new Date(b['created_at']);
-
-      if (sortKey.key === 'date') {
-        const dateA = new Date(timeA.getFullYear(), timeA.getMonth(), timeA.getDate());
-        const dateB = new Date(timeB.getFullYear(), timeB.getMonth(), timeB.getDate());
-        return sortKey.order === 'asc' ? dateA - dateB : dateB - dateA;
-      } else if (sortKey.key === 'time') {
-        const timeOnlyA = timeA.getHours() * 3600 + timeA.getMinutes() * 60 + timeA.getSeconds();
-        const timeOnlyB = timeB.getHours() * 3600 + timeB.getMinutes() * 60 + timeB.getSeconds();
-        return sortKey.order === 'asc' ? timeOnlyA - timeOnlyB : timeOnlyB - timeOnlyA;
-      }
-    });
-    return sodata;
+  const handleSort = (sortKey) => {
+    fetch(`/sort?column=${sortKey.key}&order=${sortKey.order}`)
+      .then(res => res.json())
+      .then(data => {
+        setDatas(data);
+      })
   }
 
   const handlePageChange = (index) => {
@@ -88,20 +68,26 @@ function App() {
 
   const handleSearch = (e) => {
     e.preventDefault();
-
-    if (search !== '' ) {
-
-      const filterData = originalData.filter((item) => {
-        return ['name', 'location'].some((column) => {
-          return item[column].toString().toLowerCase().includes(search.toLowerCase());
+    setSortKey({ key: 'sno', order: 'asc' });
+    if (search !== '') {
+      fetch(`/search?term=${encodeURIComponent(search)}`)
+        .then(res => res.json())
+        .then(data => {
+          setDatas(data);
         })
-      });
+        .catch(error => {
+          console.log("error occured", error);
+          alert(error);
+        });
+
       setSearch('');
-      setDatas(filterData);
+
     }
     else {
       setDatas(originalData);
     }
+
+
   }
 
   return (
@@ -109,20 +95,20 @@ function App() {
       {
         !loading ?
           <>
-            <h1>User's Data</h1>
+            <h2>User's Data</h2>
             <form onSubmit={handleSearch}>
               <input type='text' placeholder='search name or location' value={search} onChange={(e) => setSearch(e.target.value)} />
               <button className='search' type='submit' >Search</button>
 
-              <select className='itemscount' onChange={(e) => {
+              <select className='itemscount' defaultValue={20} onChange={(e) => {
                 const intValue = parseInt(e.target.value);
                 setDatas(originalData);
                 setCurrentPage(1);
                 setItemsPerPage(intValue);
-                
+                setSortKey({ key: 'sno', order: 'asc' });
               }}>
                 <option value={10}>10</option>
-                <option selected value={20}>20</option>
+                <option value={20}>20</option>
                 <option value={30}>30</option>
                 <option value={40}>40</option>
                 <option value={50}>50</option>
@@ -145,8 +131,7 @@ function App() {
                           {
                             sortKey.key === obj ?
                               sortKey.order === 'asc' ? <FaArrowUp /> : <FaArrowDown />
-                              : ''
-
+                              : <RiArrowUpDownFill />
                           }
                         </div>
                       </th>
@@ -158,17 +143,15 @@ function App() {
               <tbody>
                 {
 
-                  sorted((datas.slice((currentPage - 1) * itemsPerPage, ((currentPage - 1) * itemsPerPage) + itemsPerPage))).map((item) => {
-                    const datetimeString = item.created_at;
-                    const [date, time] = convertAndSplitDateTime(datetimeString);
+                  datas.slice((currentPage - 1) * itemsPerPage, ((currentPage - 1) * itemsPerPage) + itemsPerPage).map((item) => {
                     return <tr key={item.sno}>
                       <td>{item.sno}</td>
                       <td>{item.name}</td>
                       <td>{item.age}</td>
                       <td>{item.phone}</td>
                       <td>{item.location}</td>
-                      <td>{time}</td>
-                      <td>{date}</td>
+                      <td>{item.time}</td>
+                      <td>{item.date}</td>
                     </tr>
                   })
 
@@ -181,7 +164,7 @@ function App() {
               {
                 Array.from({ length: Math.ceil(datas.length / itemsPerPage) }, (_, index) => (
                   <button key={index} onClick={() => { handlePageChange(index + 1); }}
-                    style={{ backgroundColor: currentPage === index + 1 ? 'white' : 'gray' }}
+                    style={{ backgroundColor: currentPage === index + 1 ? 'white' : '#A0A0A0' }}
                   >
                     {index + 1}
                   </button>
